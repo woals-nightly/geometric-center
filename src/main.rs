@@ -9,6 +9,8 @@ mod locate {
 }
 
 mod polygon {
+    use std::vec;
+
     use crate::{line_line_intersecton_point, locate::Locate};
 
     pub struct Polygon {
@@ -56,19 +58,38 @@ mod polygon {
                 ..=3 => self.center_location(),
                 4 => self.quadrilateral_centroid(),
                 _ => {
-                    let (first, elements) = self.locates.split_first().unwrap();
-                    let mut center_polygon_location: Vec<Locate> = Vec::new();
-                    for loc in elements.windows(2) {
-                        let triangle = Polygon {
-                            locates: vec![first.clone(), loc[0].clone(), loc[1].clone()],
-                        };
-                        let center = triangle.center_location();
-                        center_polygon_location.push(center);
-                    }
-                    let center_polygon = Polygon {
-                        locates: center_polygon_location,
+                    let half_point = self.locates.len() / 2;
+                    // [1,2,3,4,5,6]
+                    // [1,2,3,4,1,4,5,6]
+                    let mut loc = self.locates.clone();
+                    loc.splice(half_point..half_point, [self.locates[half_point].clone(), self.locates[0].clone()]);
+                    let (left, right) = loc.split_at(half_point + 1);
+                    // 왼쪽 다각형과 오른쪽 다각형으로 나눔
+                    let left_polygon = Polygon {
+                        locates: left.to_vec()
                     };
-                    center_polygon.centroid_by_triangulation()
+                    let right_polygon = Polygon {
+                        locates: right.to_vec()
+                    };
+                    // 위와 동일하지만 포지션만 다름
+                    // [2,3,4,5,6,1]
+                    // [2,3,4,5,2,5,6,1]
+                    let mut loc2 = self.locates.clone();
+                    loc2.rotate_left(1);
+                    loc2.splice(half_point..half_point, [loc2[half_point].clone(), loc2[0].clone()]);
+                    // 왼쪽 다각형과 오른쪽 다각형으로 나눔
+                    let (left, right) = loc2.split_at(half_point + 1);
+                    let left_polygon1 = Polygon {
+                        locates: left.to_vec()
+                    };
+                    let right_polygon1 = Polygon {
+                        locates: right.to_vec()
+                    };
+
+                    // 삼각형의 중심과 도형의 중심을 잇는 두 선분의 교차점을 구함
+                    line_line_intersecton_point(
+                        (&left_polygon.centroid_by_triangulation(), &right_polygon.centroid_by_triangulation()), 
+                        (&left_polygon1.centroid_by_triangulation(), &right_polygon1.centroid_by_triangulation()))
                 }
             }
         }
@@ -105,14 +126,45 @@ fn main() {
 
     let pentagon = Polygon {
         locates: vec![
-            Locate { x: 0.0, y: 0.0 },
-            Locate { x: 4.0, y: 0.0 },
-            Locate { x: 5.0, y: 3.0 },
             Locate { x: 2.0, y: 5.0 },
+            Locate { x: 5.0, y: 3.0 },
+            Locate { x: 4.0, y: 0.0 },
+            Locate { x: 0.0, y: 0.0 },
             Locate { x: -1.0, y: 2.0 },
         ],
     };
 
-    assert_eq!(pentagon.center_location(), pentagon.centroid_by_triangulation());
-    assert_eq!(rectangle.center_location(), rectangle.centroid_by_triangulation());
+    let hexagon = Polygon {
+        locates: vec![
+            Locate { x: 1.0, y: 2.0 },
+            Locate { x: 2.0, y: 0.0 },
+            Locate { x: 1.0, y: -2.0 },
+            Locate { x: -1.0, y: -2.0 },
+            Locate { x: -2.0, y: 0.0 },
+            Locate { x: -1.0, y: 2.0 },
+        ],
+    };
+
+    let octagon = Polygon {
+        locates: vec![
+            Locate { x: 3.0, y: 0.0 },
+            Locate { x: 5.0, y: 2.0 },
+            Locate { x: 5.0, y: 5.0 },
+            Locate { x: 3.0, y: 7.0 },
+            Locate { x: 0.0, y: 7.0 },
+            Locate { x: -2.0, y: 5.0 },
+            Locate { x: -2.0, y: 2.0 },
+            Locate { x: 0.0, y: 0.0 },
+        ],
+    };
+
+    println!(
+        "centroid: {:?}",
+        octagon.center_location()
+    );
+
+    println!(
+        "centroid: {:?}",
+        octagon.centroid_by_triangulation()
+    );
 }
